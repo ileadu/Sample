@@ -1,0 +1,177 @@
+﻿<html>
+    <head>
+        <meta charset="utf-8">
+        <title>Timer</title>
+        <style>
+            body {
+                background-color: #f5f5f5;
+            }
+            .Div-Box-width {
+                width: 300px
+            }
+            .Div-Box {
+                border-width:2px;
+                border-style:solid;
+                border-color:#b7b0a8;
+                padding:5px 10px;
+            }
+            span.title {
+                position:relative;
+                top:-15px;
+                text-align: center;
+                background: #f5f5f5;
+            }
+            .like-table {
+                display:table-cell;
+                width:300px;
+                height:100px;
+                vertical-align: middle;
+                text-align: center;
+            }
+            .Items_class {
+                text-align: center;
+            }
+            #CountDown {
+                float: right
+            }
+            #Items {
+                font-size: 4em;
+                font-weight:bold;
+            }
+            .status-run {
+                color: red;
+                font-weight:bold;
+            }
+            .status-stop {
+                color: black;
+            }
+            .Items_class-run {
+                background-color: #a7ffb1;
+            }
+            .Items_class-stop {
+                background-color: #f4f561;
+            }
+            .Items_class-warn {
+                background-color: #ffb4b4;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="Div-Box Div-Box-width">
+            <span id="HeatNo" class="title"></span>
+            <div class="Div-Box">
+                <span id="Status" class="title">進行中</span>
+                <div>
+                    <div class="Items_class">
+                        <span id="StartTime"></span>
+                    </div>
+                    <div class="Items_class like-table">
+                        <span id="Items">5</span>
+                    </div>
+                </div>
+                <div>
+                    <span id="CountDown"></span>
+                    <span id="cdText"></span>
+                </div>
+            </div>
+        </div>
+
+        <script src="https://code.jquery.com/jquery-1.12.4.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.countdown/2.2.0/jquery.countdown.js"></script>
+        
+        <script type="text/javascript">
+            var timer = null;
+            $(window).load(function() {//document.ready doesn't work in Safari
+                $("#Status").addClass("status-run");
+                $(".Items_class").addClass("Items_class-warn");
+
+                // var res = {
+                //     HeatNo: "001",
+                //     Items: 5,
+                //     StartTime: getNow(),
+                //     TotalTime: 15
+                // };
+
+                getData();
+            });
+
+            var getData = function() {
+                if (timer !== null) {
+                    clearInterval(timer);
+                    timer = null;
+                }
+                $.post("/api2/Timer/getByHeatNo?HeatNo=" + $.urlParam("HeatNo"), function(res){
+                    //res.StartTime = getNow();
+                    CountDown(res);
+                }, "json");
+            };
+
+            var CountDown = function(res) {
+                $("#HeatNo").text(res.HeatNo);
+                $("#StartTime").text(res.StartTime);
+                $("#Items").text(res.Items);
+                var EndTime = OffsetTime(res.StartTime, res.TotalTime);
+                $("#CountDown").countdown(EndTime)
+                .on("update.countdown", function(event) {
+                    $("#Status").text("進行中").css("color", "red");
+                    $("#cdText").text("倒數計時");
+                    $(this).text(event.strftime("%H:%M:%S"));
+
+                    if (event.offset.totalSeconds <= 10)
+                        $("#Items").text(event.offset.totalSeconds);
+                })
+                .on("finish.countdown", function(event) {
+                    $("#cdText").text("完成時間");
+                    $(this).text(event.finalDate.toLocaleString()).css("color", "red");
+                    $("#Status").text("已完成").css("color", "#4CAF50");
+                    $("#Items").text("結束");
+                    if (timer === null)
+                        timer = setInterval(getData, 5000);
+                });
+            };
+
+            var getNow = function(){
+                var d = new Date();
+                var year = d.getFullYear();
+                var month = d.getMonth() + 1;
+                var day = d.getDate();
+                var hour = d.getHours();
+                var minute = d.getMinutes();
+                var second = d.getSeconds();
+                var arr = [month, day, hour, minute, second];
+                arr = $.map(arr, function(el) {
+                    return LeftPad0(el, 2);
+                });
+                var date = [year, arr[0], arr[1]];
+                var time = [arr[2], arr[3], arr[4]];
+                return date.join("/") + " " + time.join(":");
+            };
+
+            var LeftPad0 = function(int, len) {
+                var s = int.toString();
+                while (s.length < len)
+                    s = "0" + s;
+                return s;
+            };
+
+            var OffsetTime = function(StartTime, TotalTime) {
+                if (typeof StartTime === "undefined" || StartTime === null || StartTime === "")
+                    return;
+                var datetime = StartTime.split(" ");
+                var date = datetime[0].split("/");
+                var time = datetime[1].split(":");
+                var tz = new Date().toString().match(/([-+][0-9]+)\s/)[1];//+0800
+                tz = tz.substr(0, 3) + ":" + tz.substr(3);//+08:00
+
+                var iso = date.join("-") + "T" + time.join(":") + tz;//2017-11-16 09:40:49 doesn't work in Safari
+                var dateObj = new Date(iso);
+                return new Date(dateObj.getTime() + TotalTime * 1000);
+            };
+
+            $.urlParam = function(name){
+                var results = new RegExp('[\?&]' + name + '=([^&#]*)').exec(window.location.href);
+                return results[1] || 0;
+            };
+        </script>
+    </body>
+</html>
