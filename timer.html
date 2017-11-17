@@ -1,4 +1,4 @@
-﻿<html>
+<html>
     <head>
         <meta charset="utf-8">
         <title>Timer</title>
@@ -6,19 +6,21 @@
             body {
                 background-color: #f5f5f5;
             }
-            .Div-Box-width {
-                width: 300px
+            .timerBox {
+                border: 2px solid #b7b0a8;
+                padding: 5px 10px;
+                margin: 5px;
+                width: 300px;
+                float: left;
             }
-            .Div-Box {
-                border-width:2px;
-                border-style:solid;
-                border-color:#b7b0a8;
+            .innerBox {
+                border: 2px solid #b7b0a8;
                 padding:5px 10px;
+                width: 276px;
             }
             span.title {
                 position:relative;
                 top:-15px;
-                text-align: center;
                 background: #f5f5f5;
             }
             .like-table {
@@ -31,102 +33,105 @@
             .Items_class {
                 text-align: center;
             }
-            #CountDown {
-                float: right
-            }
-            #Items {
-                font-size: 4em;
-                font-weight:bold;
-            }
-            .status-run {
-                color: red;
-                font-weight:bold;
-            }
-            .status-stop {
-                color: black;
-            }
-            .Items_class-run {
-                background-color: #a7ffb1;
-            }
-            .Items_class-stop {
-                background-color: #f4f561;
-            }
-            .Items_class-warn {
-                background-color: #ffb4b4;
-            }
         </style>
     </head>
     <body>
-        <div class="Div-Box Div-Box-width">
-            <span id="HeatNo" class="title"></span>
-            <div class="Div-Box">
-                <span id="Status" class="title">進行中</span>
-                <div>
-                    <div class="Items_class">
-                        <span id="StartTime"></span>
-                    </div>
-                    <div class="Items_class like-table">
-                        <span id="Items">5</span>
-                    </div>
-                </div>
-                <div>
-                    <span id="CountDown"></span>
-                    <span id="cdText"></span>
-                </div>
-            </div>
-        </div>
-
         <script src="https://code.jquery.com/jquery-1.12.4.min.js"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.countdown/2.2.0/jquery.countdown.js"></script>
-        
+
         <script type="text/javascript">
-            var timer = null;
+            var timer = {};
             $(window).load(function() {//document.ready doesn't work in Safari
-                $("#Status").addClass("status-run");
-                $(".Items_class").addClass("Items_class-warn");
+                // var res = {
+                //     HeatNos : [
+                //         '10001426',
+                //         '10001428',
+                //         '10001441',
+                //         '10001443',
+                //         '10001444',
+                //         '10001503',
+                //         '10001517',
+                //         '10001522',
+                //         '10001527',
+                //         '10001566',
+                //         '10001586',
+                //         '10001590',
+                //         '10001593',
+                //         '10001594',
+                //         '10001604',
+                //         '10002207'
+                //     ]
+                // };
+                $.post("/api2/Timer/getHeatNoByPROCESS_ID?PROCESS_ID=" + $.urlParam("PROCESS_ID"), function(res) {
+                    $.map(res.HeatNos, function(el){
+                        var block = gen_tpl(el);
+                        $("body").append(block);
+                        getData(el);
+                    });
+                    $("[id^=CountDown_]").css({
+                        float: "right"
+                    });
+                    $("[id^=Items_]").css({
+                        "font-size": "4em",
+                        "font-weight": "bold"
+                    });
+                }, "json");
+            });
+
+            var getData = function(sn) {
+                if (timer.hasOwnProperty(sn) && timer[sn] !== null) {
+                    // console.log("stop ", timer[sn])
+                    clearInterval(timer[sn]);
+                    timer[sn] = null;
+                }
 
                 // var res = {
-                //     HeatNo: "001",
+                //     HeatNo: sn,
                 //     Items: 5,
                 //     StartTime: getNow(),
                 //     TotalTime: 15
                 // };
-
-                getData();
-            });
-
-            var getData = function() {
-                if (timer !== null) {
-                    clearInterval(timer);
-                    timer = null;
-                }
-                $.post("/api2/Timer/getByHeatNo?HeatNo=" + $.urlParam("HeatNo"), function(res){
+                $.post("/api2/Timer/getByHeatNo?HeatNo=" + sn, function(res) {
                     //res.StartTime = getNow();
-                    CountDown(res);
+                    CountDown(sn, res);
                 }, "json");
             };
 
-            var CountDown = function(res) {
-                $("#HeatNo").text(res.HeatNo);
-                $("#StartTime").text(res.StartTime);
-                $("#Items").text(res.Items);
+            var CountDown = function(sn, res) {
+                $("#HeatNo_" + sn).text(res.HeatNo);
+                $("#StartTime_" + sn).text(res.StartTime);
+                $("#Items_" + sn).text(res.Items);
                 var EndTime = OffsetTime(res.StartTime, res.TotalTime);
-                $("#CountDown").countdown(EndTime)
+                $("#CountDown_" + sn).countdown(EndTime)
                 .on("update.countdown", function(event) {
-                    $("#Status").text("進行中").css("color", "red");
-                    $("#cdText").text("倒數計時");
-                    $(this).text(event.strftime("%H:%M:%S"));
+                    $("#rectangle_" + sn).css({
+                        "background-color": "#a7ffb1"
+                    });
+                    $("#Status_" + sn).text("進行中").css({
+                        color: "red",
+                        "font-weight": "bold"
+                    });
+                    $("#cdText_" + sn).text("倒數計時");
+                    $(this).text(event.strftime("%H:%M:%S")).css("color", "black");
 
                     if (event.offset.totalSeconds <= 10)
-                        $("#Items").text(event.offset.totalSeconds);
+                        $("#Items_" + sn).text(event.offset.totalSeconds);
                 })
                 .on("finish.countdown", function(event) {
-                    $("#cdText").text("完成時間");
+                    $("#rectangle_" + sn).css({
+                        "background-color": "#ffb4b4"
+                    });
+                    $("#cdText_" + sn).text("完成時間");
                     $(this).text(event.finalDate.toLocaleString()).css("color", "red");
-                    $("#Status").text("已完成").css("color", "#4CAF50");
-                    $("#Items").text("結束");
-                    if (timer === null)
-                        timer = setInterval(getData, 5000);
+                    $("#Status_" + sn).text("已完成").css({
+                        color: "#4CAF50",
+                        "font-weight": "bold"
+                    });
+                    $("#Items_" + sn).text("結束");
+                    if (!timer.hasOwnProperty(sn) || timer[sn] === null) {
+                        timer[sn] = setInterval(function(){getData(sn)}, 5000);
+                        // console.log("starting ", timer[sn])
+                    }
                 });
             };
 
@@ -168,9 +173,31 @@
                 return new Date(dateObj.getTime() + TotalTime * 1000);
             };
 
-            $.urlParam = function(name){
+            $.urlParam = function(name) {
                 var results = new RegExp('[\?&]' + name + '=([^&#]*)').exec(window.location.href);
                 return results[1] || 0;
+            };
+
+            var gen_tpl = function(sn) {
+                var tpl = '<div class="timerBox">' +
+                        '<span id="HeatNo_' + sn + '" class="title"></span>' +
+                        '<div class="innerBox">' +
+                            '<span id="Status_' + sn + '" class="title"></span>' +
+                            '<div id="rectangle_' + sn + '">' +
+                                '<div class="Items_class">' +
+                                    '<span id="StartTime_' + sn + '"></span>' +
+                                '</div>' +
+                                '<div class="like-table">' +
+                                    '<span id="Items_' + sn + '"></span>' +
+                                '</div>' +
+                            '</div>' +
+                            '<div>' +
+                                '<span id="CountDown_' + sn + '"></span>' +
+                                '<span id="cdText_' + sn + '"></span>' +
+                            '</div>' +
+                        '</div>' +
+                    '</div>';
+                return tpl;
             };
         </script>
     </body>
