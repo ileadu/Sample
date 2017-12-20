@@ -40,6 +40,7 @@
         <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.countdown/2.2.0/jquery.countdown.js"></script>
 
         <script type="text/javascript">
+            // var firsttime = true, StartTime;
             var timer = {};
             $(window).load(function() {//document.ready doesn't work in Safari
                 // var res = {
@@ -62,7 +63,7 @@
                 //         '10002207'
                 //     ]
                 // };
-                $.post("/api2/Timer/getHeatNoByPROCESS_ID?PROCESS_ID=" + $.urlParam("PROCESS_ID"), function(res) {
+                $.post("/Timer/getHeatNoByPROCESS_ID?PROCESS_ID=" + $.urlParam("PROCESS_ID"), function(res) {
                     $.map(res.HeatNos, function(el){
                         var block = gen_tpl(el);
                         $("body").append(block);
@@ -79,19 +80,24 @@
             });
 
             var getData = function(sn) {
-                if (timer.hasOwnProperty(sn) && timer[sn] !== null) {
-                    // console.log("stop ", timer[sn])
-                    clearInterval(timer[sn]);
-                    timer[sn] = null;
-                }
-
+                // if (firsttime) {
+                //  StartTime = getNow();
+                //  firsttime = false;
+                // }
                 // var res = {
                 //     HeatNo: sn,
                 //     Items: 5,
-                //     StartTime: getNow(),
+                //     StartTime: StartTime,
                 //     TotalTime: 15
                 // };
-                $.post("/api2/Timer/getByHeatNo?HeatNo=" + sn, function(res) {
+                $.post("/Timer/getByHeatNo?HeatNo=" + sn, function(res) {
+                    var EndTime = OffsetTime(res.StartTime, res.TotalTime);
+                    if (timer.hasOwnProperty(sn) && timer[sn] !== null && EndTime > new Date()) {
+                        // console.log("stop ", timer[sn])
+                        clearInterval(timer[sn]);
+                        timer[sn] = null;
+                    }
+                    // alert("hi " + sn);
                     //res.StartTime = getNow();
                     CountDown(sn, res);
                 }, "json");
@@ -100,7 +106,7 @@
             var CountDown = function(sn, res) {
                 $("#HeatNo_" + sn).text(res.HeatNo);
                 $("#StartTime_" + sn).text(res.StartTime);
-                $("#Items_" + sn).text(res.Items);
+
                 var EndTime = OffsetTime(res.StartTime, res.TotalTime);
                 $("#CountDown_" + sn).countdown(EndTime)
                 .on("update.countdown", function(event) {
@@ -116,6 +122,8 @@
 
                     if (event.offset.totalSeconds <= 10)
                         $("#Items_" + sn).text(event.offset.totalSeconds);
+                    else
+                        $("#Items_" + sn).text(res.Items);
                 })
                 .on("finish.countdown", function(event) {
                     $("#rectangle_" + sn).css({
@@ -127,7 +135,7 @@
                         color: "#4CAF50",
                         "font-weight": "bold"
                     });
-                    $("#Items_" + sn).text("結束");
+                    $("#Items_" + sn).text("結束").append('<span style="font-size: 0.35em">' + res.Items + '</span>');
                     if (!timer.hasOwnProperty(sn) || timer[sn] === null) {
                         timer[sn] = setInterval(function(){getData(sn)}, 5000);
                         // console.log("starting ", timer[sn])
