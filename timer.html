@@ -92,14 +92,16 @@
                 // };
                 $.post("/Timer/getByHeatNo?HeatNo=" + sn, function(res) {
                     var EndTime = OffsetTime(res.StartTime, res.TotalTime);
-                    if (timer.hasOwnProperty(sn) && timer[sn] !== null && EndTime > new Date()) {
+                    var NowTime = new Date();
+                    if (timer.hasOwnProperty(sn) && timer[sn] !== null && EndTime > NowTime) {
                         // console.log("stop ", timer[sn])
                         clearInterval(timer[sn]);
                         timer[sn] = null;
                     }
                     // alert("hi " + sn);
                     //res.StartTime = getNow();
-                    CountDown(sn, res);
+                    if (EndTime > NowTime)
+                        CountDown(sn, res);
                 }, "json");
             };
 
